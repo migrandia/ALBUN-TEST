@@ -80,13 +80,13 @@
             color: var(--texto);
         }
 
-        /* CUADRÍCULA DE FOTOS (GALERÍA) */
+        /* CUADRÍCULA DE FOTOS */
         .gallery-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
             gap: 5px;
             padding: 10px;
-            margin-bottom: 120px; /* Espacio para el botón flotante */
+            margin-bottom: 120px;
         }
 
         .photo-item {
@@ -102,10 +102,9 @@
             width: 100%;
             height: 100%;
             object-fit: cover;
-            transition: 0.3s;
         }
 
-        /* BOTÓN FLOTANTE MÁGICO */
+        /* BOTÓN FLOTANTE */
         .upload-area {
             position: fixed;
             bottom: 30px;
@@ -113,6 +112,7 @@
             display: flex;
             justify-content: center;
             pointer-events: none;
+            z-index: 999;
         }
 
         .btn-magic-upload {
@@ -140,7 +140,6 @@
             100% { transform: scale(1); }
         }
 
-        /* MENSAJE VACÍO */
         #empty-msg {
             padding: 50px 20px;
             font-style: italic;
@@ -164,31 +163,55 @@
         <p style="font-weight: bold; margin-top: 10px;">Captura y comparte los momentos mágicos</p>
     </div>
 
-    <div class="gallery-grid" id="galleryContainer">
-        </div>
-
-    <div id="empty-msg">Aún no hay fotos. ¡Sé el primero en subir una!</div>
+    <div class="gallery-grid" id="galleryContainer"></div>
+    <div id="empty-msg">Cargando recuerdos mágicos...</div>
 
     <div class="upload-area">
-        <button id="upload_widget" class="btn-magic-upload">
-            📸 SUBIR FOTO REAL
-        </button>
+        <button id="upload_widget" class="btn-magic-upload">📸 SUBIR FOTO REAL</button>
     </div>
 
     <script>
-        // ==========================================
-        // CONFIGURACIÓN DE TU CLOUDINARY
-        // ==========================================
-        const cloudName = "dkoaxjahe"; // Tu Cloud Name de Cloudinary
-        const uploadPreset = "ALBUN TEST"; // Tu Upload Preset (Debe ser Unsigned)
-        const eventTag = "cumple_valentina_6"; // Etiqueta única para este álbum
+        const cloudName = "dkoaxjahe"; 
+        const uploadPreset = "ALBUN TEST"; 
+        const eventTag = "cumple_valentina_6";
 
-        // WIDGET DE SUBIDA
+        // 1. CARGAR FOTOS EXISTENTES AL INICIAR
+        async function cargarFotosDesdeNube() {
+            const grid = document.getElementById('galleryContainer');
+            const msg = document.getElementById('empty-msg');
+            
+            // Usamos la lista JSON de Cloudinary (Requiere desactivar Resource List en Security)
+            const url = `https://res.cloudinary.com/${cloudName}/image/list/${eventTag}.json`;
+
+            try {
+                const response = await fetch(url);
+                if(!response.ok) throw new Error();
+                const data = await response.json();
+                
+                if (data.resources.length > 0) {
+                    msg.style.display = 'none';
+                    grid.innerHTML = ''; 
+                    data.resources.forEach(img => {
+                        const item = document.createElement('div');
+                        item.className = 'photo-item';
+                        const imgSrc = `https://res.cloudinary.com/${cloudName}/image/upload/w_400,c_fill/${img.public_id}.${img.format}`;
+                        item.innerHTML = `<img src="${imgSrc}" onclick="window.open('https://res.cloudinary.com/${cloudName}/image/upload/${img.public_id}.${img.format}')">`;
+                        grid.appendChild(item);
+                    });
+                } else {
+                    msg.innerText = "Aún no hay fotos. ¡Sé el primero!";
+                }
+            } catch (e) {
+                msg.innerText = "Sube la primera foto para iniciar el álbum.";
+            }
+        }
+
+        // 2. CONFIGURAR WIDGET DE SUBIDA
         const myWidget = cloudinary.createUploadWidget({
             cloudName: cloudName, 
             uploadPreset: uploadPreset,
-            sources: ['local', 'camera', 'instagram'],
-            tags: [eventTag], // Etiqueta las fotos automáticamente
+            sources: ['local', 'camera'],
+            tags: [eventTag],
             clientAllowedFormats: ["png", "jpg", "jpeg"],
             styles: {
                 palette: {
@@ -199,40 +222,26 @@
                     textLight: "#FFFFFF",
                     link: "#D4AF37",
                     action: "#FF007F",
-                    inactiveTabIcon: "#E0A3BB",
-                    error: "#F44235",
-                    inProgress: "#0078FF",
-                    complete: "#20B832",
                     sourceBg: "#FDF2F5"
                 }
             }
         }, (error, result) => { 
             if (!error && result && result.event === "success") { 
-                console.log('¡Éxito!', result.info.secure_url);
-                agregarFotoAGaleria(result.info.secure_url);
+                // Recargamos la lista para mostrar la nueva foto
+                setTimeout(cargarFotosDesdeNube, 1000);
             }
         });
 
-        document.getElementById("upload_widget").addEventListener("click", function(){
-            myWidget.open();
-        }, false);
+        document.getElementById("upload_widget").addEventListener("click", () => myWidget.open(), false);
 
-        // FUNCIÓN PARA MOSTRAR FOTO EN PANTALLA AL INSTANTE
-        function agregarFotoAGaleria(url) {
-            document.getElementById('empty-msg').style.display = 'none';
-            const grid = document.getElementById('galleryContainer');
-            const item = document.createElement('div');
-            item.className = 'photo-item';
-            item.innerHTML = `<img src="${url}" loading="lazy">`;
-            grid.prepend(item); // Pone la foto nueva de primera
-        }
-
-        // FUNCIÓN PARA LA ANFITRIONA (DESCARGA)
+        // 3. DESCARGA ZIP (Requiere que las fotos tengan el Tag asignado)
         function descargarTodo() {
-            // Nota: Esta función genera el archivo ZIP de Cloudinary basado en el Tag
             const zipUrl = `https://res.cloudinary.com/${cloudName}/image/generate_archive?tag=${eventTag}`;
             window.open(zipUrl, '_blank');
         }
+
+        // Iniciar carga al abrir página
+        window.addEventListener('DOMContentLoaded', cargarFotosDesdeNube);
     </script>
 </body>
 </html>
