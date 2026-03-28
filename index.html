@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>👑 Álbum Real de Recuerdos</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Montserrat:wght@300;400;700&display=swap" rel="stylesheet">
+    <script src="https://widget.cloudinary.com/v2.0/global/all.js" type="text/javascript"></script>
+
+    <style>
+        :root {
+            --oro: #d4af37;
+            --rosa-suave: #fdf2f5;
+            --texto: #5a4a42;
+            --fucsia: #ff007f;
+        }
+
+        body {
+            font-family: 'Montserrat', sans-serif;
+            margin: 0; padding: 0;
+            background-color: #fef1f8;
+            color: var(--texto);
+            text-align: center;
+        }
+
+        /* PANEL DE ANFITRIONA (ADMIN) */
+        .admin-bar {
+            background: var(--texto);
+            color: white;
+            padding: 10px;
+            font-size: 0.7rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid var(--oro);
+        }
+
+        .btn-zip {
+            background: var(--oro);
+            color: white;
+            padding: 5px 12px;
+            text-decoration: none;
+            border-radius: 4px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        /* PORTADA DEL ÁLBUM */
+        .header-album {
+            background: white;
+            padding: 30px 20px;
+            border-bottom: 5px double var(--oro);
+        }
+
+        .foto-portada {
+            width: 150px;
+            height: 150px;
+            margin: 0 auto 15px;
+            border-radius: 50%;
+            border: 4px solid var(--oro);
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .foto-portada img { width: 100%; height: 100%; object-fit: cover; }
+
+        h1 { 
+            font-family: 'Great Vibes', cursive; 
+            font-size: 3.5rem; 
+            color: var(--oro); 
+            margin: 10px 0 0;
+        }
+
+        .sub-titulo {
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            font-size: 0.7rem;
+            font-weight: bold;
+            color: var(--texto);
+        }
+
+        /* CUADRÍCULA DE FOTOS (GALERÍA) */
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 5px;
+            padding: 10px;
+            margin-bottom: 120px; /* Espacio para el botón flotante */
+        }
+
+        .photo-item {
+            aspect-ratio: 1/1;
+            background: #eee;
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+            border: 1px solid #ddd;
+        }
+
+        .photo-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: 0.3s;
+        }
+
+        /* BOTÓN FLOTANTE MÁGICO */
+        .upload-area {
+            position: fixed;
+            bottom: 30px;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            pointer-events: none;
+        }
+
+        .btn-magic-upload {
+            pointer-events: auto;
+            background: var(--oro);
+            color: white;
+            border: none;
+            padding: 18px 40px;
+            border-radius: 50px;
+            font-size: 1rem;
+            font-weight: bold;
+            letter-spacing: 2px;
+            box-shadow: 0 10px 30px rgba(212, 175, 55, 0.5);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border: 2px solid white;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        /* MENSAJE VACÍO */
+        #empty-msg {
+            padding: 50px 20px;
+            font-style: italic;
+            opacity: 0.6;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="admin-bar">
+        <span>MODO ANFITRIONA ACTIVADO</span>
+        <a href="#" class="btn-zip" onclick="descargarTodo()">Descargar .ZIP</a>
+    </div>
+
+    <div class="header-album">
+        <div class="foto-portada">
+            <img src="https://www.dropbox.com/scl/fi/7nb9t6vs617f3jjmwxnet/NI-A-7.jpg?rlkey=e2on8qq3iu1ic5jk4fe0rvjf7&raw=1" alt="Princesa">
+        </div>
+        <p class="sub-titulo">¡Bienvenida al Álbum de!</p>
+        <h1>Valentina</h1>
+        <p style="font-weight: bold; margin-top: 10px;">Captura y comparte los momentos mágicos</p>
+    </div>
+
+    <div class="gallery-grid" id="galleryContainer">
+        </div>
+
+    <div id="empty-msg">Aún no hay fotos. ¡Sé el primero en subir una!</div>
+
+    <div class="upload-area">
+        <button id="upload_widget" class="btn-magic-upload">
+            📸 SUBIR FOTO REAL
+        </button>
+    </div>
+
+    <script>
+        // ==========================================
+        // CONFIGURACIÓN DE TU CLOUDINARY
+        // ==========================================
+        const cloudName = "TU_CLOUD_NAME"; // Tu Cloud Name de Cloudinary
+        const uploadPreset = "TU_PRESET_NAME"; // Tu Upload Preset (Debe ser Unsigned)
+        const eventTag = "cumple_valentina_6"; // Etiqueta única para este álbum
+
+        // WIDGET DE SUBIDA
+        const myWidget = cloudinary.createUploadWidget({
+            cloudName: cloudName, 
+            uploadPreset: uploadPreset,
+            sources: ['local', 'camera', 'instagram'],
+            tags: [eventTag], // Etiqueta las fotos automáticamente
+            clientAllowedFormats: ["png", "jpg", "jpeg"],
+            styles: {
+                palette: {
+                    window: "#FFFFFF",
+                    windowBorder: "#D4AF37",
+                    tabIcon: "#D4AF37",
+                    textDark: "#5A4A42",
+                    textLight: "#FFFFFF",
+                    link: "#D4AF37",
+                    action: "#FF007F",
+                    inactiveTabIcon: "#E0A3BB",
+                    error: "#F44235",
+                    inProgress: "#0078FF",
+                    complete: "#20B832",
+                    sourceBg: "#FDF2F5"
+                }
+            }
+        }, (error, result) => { 
+            if (!error && result && result.event === "success") { 
+                console.log('¡Éxito!', result.info.secure_url);
+                agregarFotoAGaleria(result.info.secure_url);
+            }
+        });
+
+        document.getElementById("upload_widget").addEventListener("click", function(){
+            myWidget.open();
+        }, false);
+
+        // FUNCIÓN PARA MOSTRAR FOTO EN PANTALLA AL INSTANTE
+        function agregarFotoAGaleria(url) {
+            document.getElementById('empty-msg').style.display = 'none';
+            const grid = document.getElementById('galleryContainer');
+            const item = document.createElement('div');
+            item.className = 'photo-item';
+            item.innerHTML = `<img src="${url}" loading="lazy">`;
+            grid.prepend(item); // Pone la foto nueva de primera
+        }
+
+        // FUNCIÓN PARA LA ANFITRIONA (DESCARGA)
+        function descargarTodo() {
+            // Nota: Esta función genera el archivo ZIP de Cloudinary basado en el Tag
+            const zipUrl = `https://res.cloudinary.com/${cloudName}/image/generate_archive?tag=${eventTag}`;
+            window.open(zipUrl, '_blank');
+        }
+    </script>
+</body>
+</html>
